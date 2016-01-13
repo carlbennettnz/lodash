@@ -1,4 +1,4 @@
-var arrayReduce = require('./internal/arrayReduce'),
+var arrayReduce = require('./_arrayReduce'),
     keys = require('./keys');
 
 /** Used for built-in method references. */

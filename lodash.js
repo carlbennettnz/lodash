@@ -163,7 +163,8 @@
 
   /** Used to compose unicode character classes. */
   var rsAstralRange = '\\ud800-\\udfff',
-      rsComboRange = '\\u0300-\\u036f\\ufe20-\\ufe23',
+      rsComboMarksRange = '\\u0300-\\u036f\\ufe20-\\ufe23',
+      rsComboSymbolsRange = '\\u20d0-\\u20f0',
       rsDingbatRange = '\\u2700-\\u27bf',
       rsLowerRange = 'a-z\\xdf-\\xf6\\xf8-\\xff',
       rsMathOpRange = '\\xac\\xb1\\xd7\\xf7',
@@ -177,12 +178,13 @@
   /** Used to compose unicode capture groups. */
   var rsAstral = '[' + rsAstralRange + ']',
       rsBreak = '[' + rsBreakRange + ']',
-      rsCombo = '[' + rsComboRange + ']',
+      rsCombo = '[' + rsComboMarksRange + rsComboSymbolsRange + ']',
       rsDigits = '\\d+',
       rsDingbat = '[' + rsDingbatRange + ']',
       rsLower = '[' + rsLowerRange + ']',
       rsMisc = '[^' + rsAstralRange + rsBreakRange + rsDigits + rsDingbatRange + rsLowerRange + rsUpperRange + ']',
-      rsModifier = '(?:\\ud83c[\\udffb-\\udfff])',
+      rsFitz = '\\ud83c[\\udffb-\\udfff]',
+      rsModifier = '(?:' + rsCombo + '|' + rsFitz + ')',
       rsNonAstral = '[^' + rsAstralRange + ']',
       rsRegional = '(?:\\ud83c[\\udde6-\\uddff]){2}',
       rsSurrPair = '[\\ud800-\\udbff][\\udc00-\\udfff]',
@@ -199,14 +201,17 @@
       rsEmoji = '(?:' + [rsDingbat, rsRegional, rsSurrPair].join('|') + ')' + rsSeq,
       rsSymbol = '(?:' + [rsNonAstral + rsCombo + '?', rsCombo, rsRegional, rsSurrPair, rsAstral].join('|') + ')';
 
-  /** Used to match [combining diacritical marks](https://en.wikipedia.org/wiki/Combining_Diacritical_Marks). */
+  /**
+   * Used to match [combining diacritical marks](https://en.wikipedia.org/wiki/Combining_Diacritical_Marks) and
+   * [combining diacritical marks for symbols](https://en.wikipedia.org/wiki/Combining_Diacritical_Marks_for_Symbols).
+   */
   var reComboMark = RegExp(rsCombo, 'g');
 
   /** Used to match [string symbols](https://mathiasbynens.be/notes/javascript-unicode). */
-  var reComplexSymbol = RegExp(rsSymbol + rsSeq, 'g');
+  var reComplexSymbol = RegExp(rsFitz + '(?=' + rsFitz + ')|' + rsSymbol + rsSeq, 'g');
 
   /** Used to detect strings with [zero-width joiners or code points from the astral planes](http://eev.ee/blog/2015/09/12/dark-corners-of-unicode/). */
-  var reHasComplexSymbol = RegExp('[' + rsZWJ + rsAstralRange + rsComboRange + rsVarRange + ']');
+  var reHasComplexSymbol = RegExp('[' + rsZWJ + rsAstralRange  + rsComboMarksRange + rsComboSymbolsRange + rsVarRange + ']');
 
   /** Used to match non-compound words composed of alphanumeric characters. */
   var reBasicWord = /[a-zA-Z0-9]+/g;
@@ -216,7 +221,8 @@
     rsUpper + '?' + rsLower + '+(?=' + [rsBreak, rsUpper, '$'].join('|') + ')',
     rsUpperMisc + '+(?=' + [rsBreak, rsUpper + rsLowerMisc, '$'].join('|') + ')',
     rsUpper + '?' + rsLowerMisc + '+',
-    rsDigits + '(?:' + rsLowerMisc + '+)?',
+    rsUpper + '+',
+    rsDigits,
     rsEmoji
   ].join('|'), 'g');
 
@@ -688,7 +694,7 @@
   /**
    * The base implementation of methods like `_.find` and `_.findKey`, without
    * support for iteratee shorthands, which iterates over `collection` using
-   * the provided `eachFunc`.
+   * `eachFunc`.
    *
    * @private
    * @param {Array|Object} collection The collection to search.
@@ -756,8 +762,7 @@
 
   /**
    * The base implementation of `_.reduce` and `_.reduceRight`, without support
-   * for iteratee shorthands, which iterates over `collection` using the provided
-   * `eachFunc`.
+   * for iteratee shorthands, which iterates over `collection` using `eachFunc`.
    *
    * @private
    * @param {Array|Object} collection The collection to iterate over.
@@ -1164,6 +1169,7 @@
   /**
    * Gets the number of symbols in `string`.
    *
+   * @private
    * @param {string} string The string to inspect.
    * @returns {number} Returns the string size.
    */
@@ -1279,14 +1285,14 @@
     );
 
     /** Built-in value references. */
-    var _Symbol = context.Symbol,
-        Reflect = context.Reflect,
+    var Reflect = context.Reflect,
+        Symbol = context.Symbol,
         Uint8Array = context.Uint8Array,
         clearTimeout = context.clearTimeout,
         enumerate = Reflect ? Reflect.enumerate : undefined,
         getPrototypeOf = Object.getPrototypeOf,
         getOwnPropertySymbols = Object.getOwnPropertySymbols,
-        iteratorSymbol = typeof (iteratorSymbol = _Symbol && _Symbol.iterator) == 'symbol' ? iteratorSymbol : undefined,
+        iteratorSymbol = typeof (iteratorSymbol = Symbol && Symbol.iterator) == 'symbol' ? iteratorSymbol : undefined,
         propertyIsEnumerable = objectProto.propertyIsEnumerable,
         setTimeout = context.setTimeout,
         splice = arrayProto.splice;
@@ -1317,9 +1323,9 @@
         setCtorString = Set ? funcToString.call(Set) : '';
 
     /** Used to convert symbols to primitives and strings. */
-    var symbolProto = _Symbol ? _Symbol.prototype : undefined,
-        symbolValueOf = _Symbol ? symbolProto.valueOf : undefined,
-        symbolToString = _Symbol ? symbolProto.toString : undefined;
+    var symbolProto = Symbol ? Symbol.prototype : undefined,
+        symbolValueOf = Symbol ? symbolProto.valueOf : undefined,
+        symbolToString = Symbol ? symbolProto.toString : undefined;
 
     /** Used to lookup unminified function names. */
     var realNames = {};
@@ -1367,13 +1373,12 @@
      * The chainable wrapper methods are:
      * `after`, `ary`, `assign`, `assignIn`, `assignInWith`, `assignWith`,
      * `at`, `before`, `bind`, `bindAll`, `bindKey`, `chain`, `chunk`, `commit`,
-     * `compact`, `concat`, `conforms`,  `constant`, `countBy`, `create`, `curry`,
+     * `compact`, `concat`, `conforms`, `constant`, `countBy`, `create`, `curry`,
      * `debounce`, `defaults`, `defaultsDeep`, `defer`, `delay`, `difference`,
-     * `differenceBy`, `differenceWith`,  `drop`, `dropRight`, `dropRightWhile`,
+     * `differenceBy`, `differenceWith`, `drop`, `dropRight`, `dropRightWhile`,
      * `dropWhile`, `fill`, `filter`, `flatten`, `flattenDeep`, `flip`, `flow`,
-     * `flowRight`, `forEach`, `forEachRight`, `forIn`, `forInRight`, `forOwn`,
-     * `forOwnRight`, `fromPairs`, `functions`, `functionsIn`, `groupBy`, `initial`,
-     * `intersection`, `intersectionBy`, `intersectionWith`, invert`, `invokeMap`,
+     * `flowRight`, `fromPairs`, `functions`, `functionsIn`, `groupBy`, `initial`,
+     * `intersection`, `intersectionBy`, `intersectionWith`, `invert`, `invokeMap`,
      * `iteratee`, `keyBy`, `keys`, `keysIn`, `map`, `mapKeys`, `mapValues`,
      * `matches`, `matchesProperty`, `memoize`, `merge`, `mergeWith`, `method`,
      * `methodOf`, `mixin`, `negate`, `nthArg`, `omit`, `omitBy`, `once`, `orderBy`,
@@ -1386,28 +1391,30 @@
      * `toArray`, `toPairs`, `toPairsIn`, `toPath`, `toPlainObject`, `transform`,
      * `unary`, `union`, `unionBy`, `unionWith`, `uniq`, `uniqBy`, `uniqWith`,
      * `unset`, `unshift`, `unzip`, `unzipWith`, `values`, `valuesIn`, `without`,
-     * `wrap`, `xor`, `xorBy`, `xorWith`, `zip`, `zipObject`, and `zipWith`
+     * `wrap`, `xor`, `xorBy`, `xorWith`, `zip`, `zipObject`, `zipObjectDeep`,
+     * and `zipWith`
      *
      * The wrapper methods that are **not** chainable by default are:
      * `add`, `attempt`, `camelCase`, `capitalize`, `ceil`, `clamp`, `clone`,
      * `cloneDeep`, `cloneDeepWith`, `cloneWith`, `deburr`, `endsWith`, `eq`,
      * `escape`, `escapeRegExp`, `every`, `find`, `findIndex`, `findKey`,
-     * `findLast`, `findLastIndex`, `findLastKey`, `floor`, `get`, `gt`, `gte`,
-     * `has`, `hasIn`, `head`, `identity`, `includes`, `indexOf`, `inRange`,
-     * `invoke`, `isArguments`, `isArray`, `isArrayLike`, `isArrayLikeObject`,
-     * `isBoolean`, `isDate`, `isElement`, `isEmpty`, `isEqual`, `isEqualWith`,
-     * `isError`, `isFinite`, `isFunction`, `isInteger`, `isLength`, `isMatch`,
-     * `isMatchWith`, `isNaN`, `isNative`, `isNil`, `isNull`, `isNumber`,
-     * `isObject`, `isObjectLike`, `isPlainObject`, `isRegExp`, `isSafeInteger`,
-     * `isString`, `isUndefined`, `isTypedArray`, `join`, `kebabCase`, `last`,
-     * `lastIndexOf`, `lowerCase`, `lowerFirst`, `lt`, `lte`, `max`, `maxBy`,
-     * `mean`, `min`, `minBy`, `noConflict`, `noop`, `now`, `pad`, `padEnd`,
-     * `padStart`, `parseInt`, `pop`, `random`, `reduce`, `reduceRight`, `repeat`,
-     * `result`, `round`, `runInContext`, `sample`, `shift`, `size`, `snakeCase`,
-     * `some`, `sortedIndex`, `sortedIndexBy`, `sortedLastIndex`, `sortedLastIndexBy`,
-     * `startCase`, `startsWith`, `subtract`, `sum`, sumBy`, `template`, `times`,
-     * `toLower`, `toInteger`, `toLength`, `toNumber`, `toSafeInteger`, toString`,
-     * `toUpper`, `trim`, `trimEnd`, `trimStart`, `truncate`, `unescape`, `uniqueId`,
+     * `findLast`, `findLastIndex`, `findLastKey`, `floor`, `forEach`, `forEachRight`,
+     * `forIn`, `forInRight`, `forOwn`, `forOwnRight`, `get`, `gt`, `gte`, `has`,
+     * `hasIn`, `head`, `identity`, `includes`, `indexOf`, `inRange`, `invoke`,
+     * `isArguments`, `isArray`, `isArrayLike`, `isArrayLikeObject`, `isBoolean`,
+     * `isDate`, `isElement`, `isEmpty`, `isEqual`, `isEqualWith`, `isError`,
+     * `isFinite`, `isFunction`, `isInteger`, `isLength`, `isMatch`, `isMatchWith`,
+     * `isNaN`, `isNative`, `isNil`, `isNull`, `isNumber`, `isObject`, `isObjectLike`,
+     * `isPlainObject`, `isRegExp`, `isSafeInteger`, `isString`, `isUndefined`,
+     * `isTypedArray`, `join`, `kebabCase`, `last`, `lastIndexOf`, `lowerCase`,
+     * `lowerFirst`, `lt`, `lte`, `max`, `maxBy`, `mean`, `min`, `minBy`,
+     * `noConflict`, `noop`, `now`, `pad`, `padEnd`, `padStart`, `parseInt`,
+     * `pop`, `random`, `reduce`, `reduceRight`, `repeat`, `result`, `round`,
+     * `runInContext`, `sample`, `shift`, `size`, `snakeCase`, `some`, `sortedIndex`,
+     * `sortedIndexBy`, `sortedLastIndex`, `sortedLastIndexBy`, `startCase`,
+     * `startsWith`, `subtract`, `sum`, `sumBy`, `template`, `times`, `toLower`,
+     * `toInteger`, `toLength`, `toNumber`, `toSafeInteger`, `toString`, `toUpper`,
+     * `trim`, `trimEnd`, `trimStart`, `truncate`, `unescape`, `uniqueId`,
      * `upperCase`, `upperFirst`, `value`, and `words`
      *
      * @name _
@@ -2810,7 +2817,10 @@
           var stack = new Stack,
               result = customizer ? customizer(objValue, srcValue, key, object, source, stack) : undefined;
 
-          if (!(result === undefined ? baseIsEqual(srcValue, objValue, customizer, UNORDERED_COMPARE_FLAG | PARTIAL_COMPARE_FLAG, stack) : result)) {
+          if (!(result === undefined
+                ? baseIsEqual(srcValue, objValue, customizer, UNORDERED_COMPARE_FLAG | PARTIAL_COMPARE_FLAG, stack)
+                : result
+              )) {
             return false;
           }
         }
@@ -2946,10 +2956,11 @@
      * @private
      * @param {Object} object The destination object.
      * @param {Object} source The source object.
+     * @param {number} srcIndex The index of `source`.
      * @param {Function} [customizer] The function to customize merged values.
      * @param {Object} [stack] Tracks traversed source values and their merged counterparts.
      */
-    function baseMerge(object, source, customizer, stack) {
+    function baseMerge(object, source, srcIndex, customizer, stack) {
       if (object === source) {
         return;
       }
@@ -2961,7 +2972,7 @@
         }
         if (isObject(srcValue)) {
           stack || (stack = new Stack);
-          baseMergeDeep(object, source, key, baseMerge, customizer, stack);
+          baseMergeDeep(object, source, key, srcIndex, baseMerge, customizer, stack);
         }
         else {
           var newValue = customizer ? customizer(object[key], srcValue, (key + ''), object, source, stack) : undefined;
@@ -2982,11 +2993,12 @@
      * @param {Object} object The destination object.
      * @param {Object} source The source object.
      * @param {string} key The key of the value to merge.
+     * @param {number} srcIndex The index of `source`.
      * @param {Function} mergeFunc The function to merge values.
      * @param {Function} [customizer] The function to customize assigned values.
      * @param {Object} [stack] Tracks traversed source values and their merged counterparts.
      */
-    function baseMergeDeep(object, source, key, mergeFunc, customizer, stack) {
+    function baseMergeDeep(object, source, key, srcIndex, mergeFunc, customizer, stack) {
       var objValue = object[key],
           srcValue = source[key],
           stacked = stack.get(srcValue) || stack.get(objValue);
@@ -3001,24 +3013,36 @@
       if (isCommon) {
         newValue = srcValue;
         if (isArray(srcValue) || isTypedArray(srcValue)) {
-          newValue = isArray(objValue)
-            ? objValue
-            : ((isArrayLikeObject(objValue)) ? copyArray(objValue) : baseClone(srcValue));
+          if (isArray(objValue)) {
+            newValue = srcIndex ? copyArray(objValue) : objValue;
+          }
+          else if (isArrayLikeObject(objValue)) {
+            newValue = copyArray(objValue);
+          }
+          else {
+            newValue = baseClone(srcValue);
+          }
         }
         else if (isPlainObject(srcValue) || isArguments(srcValue)) {
-          newValue = isArguments(objValue)
-            ? toPlainObject(objValue)
-            : (isObject(objValue) ? objValue : baseClone(srcValue));
+          if (isArguments(objValue)) {
+            newValue = toPlainObject(objValue);
+          }
+          else if (!isObject(objValue) || (srcIndex && isFunction(objValue))) {
+            newValue = baseClone(srcValue);
+          }
+          else {
+            newValue = srcIndex ? baseClone(objValue) : objValue;
+          }
         }
         else {
-          isCommon = isFunction(srcValue);
+          isCommon = false;
         }
       }
       stack.set(srcValue, newValue);
 
       if (isCommon) {
         // Recursively merge objects and arrays (susceptible to call stack limits).
-        mergeFunc(newValue, srcValue, customizer, stack);
+        mergeFunc(newValue, srcValue, srcIndex, customizer, stack);
       }
       assignMergeValue(object, key, newValue);
     }
@@ -3082,7 +3106,7 @@
     function basePickBy(object, predicate) {
       var result = {};
       baseForIn(object, function(value, key) {
-        if (predicate(value)) {
+        if (predicate(value, key)) {
           result[key] = value;
         }
       });
@@ -3605,6 +3629,27 @@
     }
 
     /**
+     * This base implementation of `_.zipObject` which assigns values using `assignFunc`.
+     *
+     * @private
+     * @param {Array} props The property names.
+     * @param {Array} values The property values.
+     * @param {Function} assignFunc The function to assign values.
+     * @returns {Object} Returns the new object.
+     */
+    function baseZipObject(props, values, assignFunc) {
+      var index = -1,
+          length = props.length,
+          valsLength = values.length,
+          result = {};
+
+      while (++index < length) {
+        assignFunc(result, props[index], index < valsLength ? values[index] : undefined);
+      }
+      return result;
+    }
+
+    /**
      * Creates a clone of `buffer`.
      *
      * @private
@@ -3667,7 +3712,7 @@
      * @returns {Object} Returns the cloned symbol object.
      */
     function cloneSymbol(symbol) {
-      return _Symbol ? Object(symbolValueOf.call(symbol)) : {};
+      return Symbol ? Object(symbolValueOf.call(symbol)) : {};
     }
 
     /**
@@ -3870,7 +3915,7 @@
         while (++index < length) {
           var source = sources[index];
           if (source) {
-            assigner(object, source, customizer);
+            assigner(object, source, index, customizer);
           }
         }
         return object;
@@ -4555,7 +4600,7 @@
             equalFunc(convert(object), convert(other), customizer, bitmask | UNORDERED_COMPARE_FLAG);
 
         case symbolTag:
-          return !!_Symbol && (symbolValueOf.call(object) == symbolValueOf.call(other));
+          return !!Symbol && (symbolValueOf.call(object) == symbolValueOf.call(other));
       }
       return false;
     }
@@ -4575,7 +4620,6 @@
      */
     function equalObjects(object, other, equalFunc, customizer, bitmask, stack) {
       var isPartial = bitmask & PARTIAL_COMPARE_FLAG,
-          isUnordered = bitmask & UNORDERED_COMPARE_FLAG,
           objProps = keys(object),
           objLength = objProps.length,
           othProps = keys(other),
@@ -4587,8 +4631,7 @@
       var index = objLength;
       while (index--) {
         var key = objProps[index];
-        if (!(isPartial ? key in other : baseHas(other, key)) ||
-            !(isUnordered || key == othProps[index])) {
+        if (!(isPartial ? key in other : baseHas(other, key))) {
           return false;
         }
       }
@@ -4658,7 +4701,7 @@
     function getFuncName(func) {
       var result = (func.name + ''),
           array = realNames[result],
-          length = array ? array.length : 0;
+          length = hasOwnProperty.call(realNames, result) ? array.length : 0;
 
       while (length--) {
         var data = array[length],
@@ -5099,9 +5142,9 @@
     function mergeDefaults(objValue, srcValue, key, object, source, stack) {
       if (isObject(objValue) && isObject(srcValue)) {
         stack.set(srcValue, objValue);
-        baseMerge(objValue, srcValue, mergeDefaults, stack);
+        baseMerge(objValue, srcValue, undefined, mergeDefaults, stack);
       }
-      return objValue === undefined ? baseClone(srcValue) : objValue;
+      return objValue;
     }
 
     /**
@@ -5315,8 +5358,11 @@
      * // => [1]
      */
     var concat = rest(function(array, values) {
+      if (!isArray(array)) {
+        array = array == null ? [] : [Object(array)];
+      }
       values = baseFlatten(values);
-      return arrayConcat(isArray(array) ? array : [Object(array)], values);
+      return arrayConcat(array, values);
     });
 
     /**
@@ -5748,7 +5794,7 @@
 
       while (++index < length) {
         var pair = pairs[index];
-        baseSet(result, pair[0], pair[1]);
+        result[pair[0]] = pair[1];
       }
       return result;
     }
@@ -5837,6 +5883,7 @@
      * @param {...Array} [arrays] The arrays to inspect.
      * @returns {Array} Returns the new array of shared values.
      * @example
+     *
      * _.intersection([2, 1], [4, 2], [1, 2]);
      * // => [2]
      */
@@ -6029,7 +6076,7 @@
      *
      * var array = [1, 2, 3, 1, 2, 3];
      *
-     * _.pull(array, [2, 3]);
+     * _.pullAll(array, [2, 3]);
      * console.log(array);
      * // => [1, 1]
      */
@@ -6153,6 +6200,7 @@
      * **Note:** This method mutates `array` and is based on
      * [`Array#reverse`](https://mdn.io/Array/reverse).
      *
+     * @static
      * @memberOf _
      * @category Array
      * @returns {Array} Returns `array`.
@@ -6883,19 +6931,29 @@
      * @returns {Object} Returns the new object.
      * @example
      *
-     * _.zipObject(['fred', 'barney'], [30, 40]);
-     * // => { 'fred': 30, 'barney': 40 }
+     * _.zipObject(['a', 'b'], [1, 2]);
+     * // => { 'a': 1, 'b': 2 }
      */
     function zipObject(props, values) {
-      var index = -1,
-          length = props ? props.length : 0,
-          valsLength = values ? values.length : 0,
-          result = {};
+      return baseZipObject(props || [], values || [], assignValue);
+    }
 
-      while (++index < length) {
-        baseSet(result, props[index], index < valsLength ? values[index] : undefined);
-      }
-      return result;
+    /**
+     * This method is like `_.zipObject` except that it supports property paths.
+     *
+     * @static
+     * @memberOf _
+     * @category Array
+     * @param {Array} [props=[]] The property names.
+     * @param {Array} [values=[]] The property values.
+     * @returns {Object} Returns the new object.
+     * @example
+     *
+     * _.zipObjectDeep(['a.b[0].c', 'a.b[1].d'], [1, 2]);
+     * // => { 'a': { 'b': [{ 'c': 1 }, { 'd': 2 }] } }
+     */
+    function zipObjectDeep(props, values) {
+      return baseZipObject(props || [], values || [], baseSet);
     }
 
     /**
@@ -7111,7 +7169,7 @@
     /**
      * This method is the wrapper version of `_.flatMap`.
      *
-     * @static
+     * @name flatMap
      * @memberOf _
      * @category Seq
      * @param {Function|Object|string} [iteratee=_.identity] The function invoked per iteration.
@@ -7262,7 +7320,7 @@
      *
      * @name value
      * @memberOf _
-     * @alias run, toJSON, valueOf
+     * @alias toJSON, valueOf
      * @category Seq
      * @returns {*} Returns the resolved unwrapped value.
      * @example
@@ -7631,13 +7689,13 @@
      *   { 'dir': 'right', 'code': 100 }
      * ];
      *
-     * _.keyBy(keyData, 'dir');
-     * // => { 'left': { 'dir': 'left', 'code': 97 }, 'right': { 'dir': 'right', 'code': 100 } }
-     *
      * _.keyBy(keyData, function(o) {
      *   return String.fromCharCode(o.code);
      * });
      * // => { 'a': { 'dir': 'left', 'code': 97 }, 'd': { 'dir': 'right', 'code': 100 } }
+     *
+     * _.keyBy(keyData, 'dir');
+     * // => { 'left': { 'dir': 'left', 'code': 97 }, 'right': { 'dir': 'right', 'code': 100 } }
      */
     var keyBy = createAggregator(function(result, value, key) {
       result[key] = value;
@@ -7669,11 +7727,11 @@
      *   return n * n;
      * }
      *
-     * _.map([1, 2], square);
-     * // => [3, 6]
+     * _.map([4, 8], square);
+     * // => [16, 64]
      *
-     * _.map({ 'a': 1, 'b': 2 }, square);
-     * // => [3, 6] (iteration order is not guaranteed)
+     * _.map({ 'a': 4, 'b': 8 }, square);
+     * // => [16, 64] (iteration order is not guaranteed)
      *
      * var users = [
      *   { 'user': 'barney' },
@@ -7899,7 +7957,8 @@
     }
 
     /**
-     * Gets `n` random elements from `collection`.
+     * Gets `n` random elements at unique keys from `collection` up to the
+     * size of `collection`.
      *
      * @static
      * @memberOf _
@@ -7909,8 +7968,11 @@
      * @returns {Array} Returns the random elements.
      * @example
      *
-     * _.sampleSize([1, 2, 3, 4], 2);
+     * _.sampleSize([1, 2, 3], 2);
      * // => [3, 1]
+     *
+     * _.sampleSize([1, 2, 3], 4);
+     * // => [2, 3, 1]
      */
     function sampleSize(collection, n) {
       var index = -1,
@@ -9074,7 +9136,7 @@
      * This method is like `_.clone` except that it accepts `customizer` which
      * is invoked to produce the cloned value. If `customizer` returns `undefined`
      * cloning is handled by the method instead. The `customizer` is invoked with
-     * up to five arguments; (value [, index|key, object, stack]).
+     * up to four arguments; (value [, index|key, object, stack]).
      *
      * @static
      * @memberOf _
@@ -9090,7 +9152,7 @@
      *   }
      * }
      *
-     * var el = _.clone(document.body, customizer);
+     * var el = _.cloneWith(document.body, customizer);
      *
      * console.log(el === document.body);
      * // => false
@@ -9140,7 +9202,7 @@
      *   }
      * }
      *
-     * var el = _.cloneDeep(document.body, customizer);
+     * var el = _.cloneDeepWith(document.body, customizer);
      *
      * console.log(el === document.body);
      * // => false
@@ -9468,7 +9530,7 @@
     /**
      * This method is like `_.isEqual` except that it accepts `customizer` which is
      * invoked to compare values. If `customizer` returns `undefined` comparisons are
-     * handled by the method instead. The `customizer` is invoked with up to seven arguments:
+     * handled by the method instead. The `customizer` is invoked with up to six arguments:
      * (objValue, othValue [, index|key, object, other, stack]).
      *
      * @static
@@ -9718,7 +9780,7 @@
     /**
      * This method is like `_.isMatch` except that it accepts `customizer` which
      * is invoked to compare values. If `customizer` returns `undefined` comparisons
-     * are handled by the method instead. The `customizer` is invoked with three
+     * are handled by the method instead. The `customizer` is invoked with five
      * arguments: (objValue, srcValue, index|key, object, source).
      *
      * @static
@@ -10189,7 +10251,7 @@
      * @memberOf _
      * @category Lang
      * @param {*} value The value to convert.
-     * @return {number} Returns the converted integer.
+     * @returns {number} Returns the converted integer.
      * @example
      *
      * _.toLength(3);
@@ -10328,7 +10390,7 @@
         return '';
       }
       if (isSymbol(value)) {
-        return _Symbol ? symbolToString.call(value) : '';
+        return Symbol ? symbolToString.call(value) : '';
       }
       var result = (value + '');
       return (result == '0' && (1 / value) == -INFINITY) ? '-0' : result;
@@ -10430,7 +10492,7 @@
      * defaults({ 'a': 1 }, { 'b': 2 }, { 'a': 3 });
      * // => { 'a': 1, 'b': 2 }
      */
-    var assignInWith = createAssigner(function(object, source, customizer) {
+    var assignInWith = createAssigner(function(object, source, srcIndex, customizer) {
       copyObjectWith(source, keysIn(source), object, customizer);
     });
 
@@ -10460,7 +10522,7 @@
      * defaults({ 'a': 1 }, { 'b': 2 }, { 'a': 3 });
      * // => { 'a': 1, 'b': 2 }
      */
-    var assignWith = createAssigner(function(object, source, customizer) {
+    var assignWith = createAssigner(function(object, source, srcIndex, customizer) {
       copyObjectWith(source, keys(source), object, customizer);
     });
 
@@ -11140,8 +11202,8 @@
      * _.merge(users, ages);
      * // => { 'data': [{ 'user': 'barney', 'age': 36 }, { 'user': 'fred', 'age': 40 }] }
      */
-    var merge = createAssigner(function(object, source) {
-      baseMerge(object, source);
+    var merge = createAssigner(function(object, source, srcIndex) {
+      baseMerge(object, source, srcIndex);
     });
 
     /**
@@ -11179,8 +11241,8 @@
      * _.mergeWith(object, other, customizer);
      * // => { 'fruits': ['apple', 'banana'], 'vegetables': ['beet', 'carrot'] }
      */
-    var mergeWith = createAssigner(function(object, source, customizer) {
-      baseMerge(object, source, customizer);
+    var mergeWith = createAssigner(function(object, source, srcIndex, customizer) {
+      baseMerge(object, source, srcIndex, customizer);
     });
 
     /**
@@ -11228,9 +11290,9 @@
      * // => { 'b': '2' }
      */
     function omitBy(object, predicate) {
-      predicate = getIteratee(predicate);
-      return basePickBy(object, function(value) {
-        return !predicate(value);
+      predicate = getIteratee(predicate, 2);
+      return basePickBy(object, function(value, key) {
+        return !predicate(value, key);
       });
     }
 
@@ -11273,7 +11335,7 @@
      * // => { 'a': 1, 'c': 3 }
      */
     function pickBy(object, predicate) {
-      return object == null ? {} : basePickBy(object, getIteratee(predicate));
+      return object == null ? {} : basePickBy(object, getIteratee(predicate, 2));
     }
 
     /**
@@ -12040,7 +12102,7 @@
      * `undefined` or `0`, a `radix` of `10` is used unless `value` is a hexadecimal,
      * in which case a `radix` of `16` is used.
      *
-     * **Note:** This method aligns with the [ES5 implementation](https://es5.github.io/#E)
+     * **Note:** This method aligns with the [ES5 implementation](https://es5.github.io/#x15.1.2.2)
      * of `parseInt`.
      *
      * @static
@@ -12832,7 +12894,7 @@
      *   [_.matches({ 'a': 1 }),           _.constant('matches A')],
      *   [_.conforms({ 'b': _.isNumber }), _.constant('matches B')],
      *   [_.constant(true),                _.constant('no match')]
-     * ])
+     * ]);
      *
      * func({ 'a': 1, 'b': 2 });
      * // => 'matches A'
@@ -13203,7 +13265,9 @@
      * var lodash = _.noConflict();
      */
     function noConflict() {
-      root._ = oldDash;
+      if (root._ === this) {
+        root._ = oldDash;
+      }
       return this;
     }
 
@@ -13368,8 +13432,7 @@
      * Creates an array of numbers (positive and/or negative) progressing from
      * `start` up to, but not including, `end`. A step of `-1` is used if a negative
      * `start` is specified without an `end` or `step`. If `end` is not specified
-     * it's set to `start` with `start` then set to `0`.  If `end` is less than
-     * `start` a zero-length range is created unless a negative `step` is specified.
+     * it's set to `start` with `start` then set to `0`.
      *
      * **Note:** JavaScript follows the IEEE-754 standard for resolving
      * floating-point values which can produce unexpected results.
@@ -13637,7 +13700,7 @@
      *
      * var objects = [{ 'n': 1 }, { 'n': 2 }];
      *
-     * _.maxBy(objects, function(o) { return o.a; });
+     * _.maxBy(objects, function(o) { return o.n; });
      * // => { 'n': 2 }
      *
      * // using the `_.property` iteratee shorthand
@@ -13705,7 +13768,7 @@
      *
      * var objects = [{ 'n': 1 }, { 'n': 2 }];
      *
-     * _.minBy(objects, function(o) { return o.a; });
+     * _.minBy(objects, function(o) { return o.n; });
      * // => { 'n': 1 }
      *
      * // using the `_.property` iteratee shorthand
@@ -13986,11 +14049,10 @@
     lodash.xorWith = xorWith;
     lodash.zip = zip;
     lodash.zipObject = zipObject;
+    lodash.zipObjectDeep = zipObjectDeep;
     lodash.zipWith = zipWith;
 
     // Add aliases.
-    lodash.each = forEach;
-    lodash.eachRight = forEachRight;
     lodash.extend = assignIn;
     lodash.extendWith = assignInWith;
 
@@ -14133,6 +14195,8 @@
     lodash.upperFirst = upperFirst;
 
     // Add aliases.
+    lodash.each = forEach;
+    lodash.eachRight = forEachRight;
     lodash.first = head;
 
     mixin(lodash, (function() {

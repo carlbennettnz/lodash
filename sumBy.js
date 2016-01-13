@@ -1,5 +1,5 @@
-var baseIteratee = require('./internal/baseIteratee'),
-    baseSum = require('./internal/baseSum');
+var baseIteratee = require('./_baseIteratee'),
+    baseSum = require('./_baseSum');
 
 /**
  * This method is like `_.sum` except that it accepts `iteratee` which is

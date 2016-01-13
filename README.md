@@ -1,4 +1,4 @@
-# lodash v4.0.0
+# lodash v4.0.0-pre
 
 The [lodash](https://lodash.com/) library exported as [Node.js](https://nodejs.org/) modules.
 
@@ -36,7 +36,7 @@ Install [n_](https://www.npmjs.com/package/n_) for a REPL that includes lodash b
 
 ## Module formats
 
-lodash is also available in a variety of other builds & module formats.
+Lodash is also available in a variety of other builds & module formats.
 
  * [lodash](https://www.npmjs.com/package/lodash) & [per method](https://www.npmjs.com/browse/keyword/lodash-modularized) packages
  * [lodash-amd](https://www.npmjs.com/package/lodash-amd)

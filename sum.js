@@ -1,4 +1,4 @@
-var baseSum = require('./internal/baseSum'),
+var baseSum = require('./_baseSum'),
     identity = require('./identity');
 
 /**
